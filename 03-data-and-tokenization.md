@@ -56,7 +56,9 @@ A **chat template** (Jinja, stored in the tokenizer) converts messages to the ex
 * The **generation prompt** (`add_generation_prompt=True`) and the training prefix must match what you will use at inference.
 * The **EOS/turn-end token** must be in the training target so the model learns to stop. (For some base models you must set `eos_token` in `SFTConfig` to the chat end token, e.g. `<|im_end|>`.)
 * **Loss masking:** train only on what the model must produce. In SFT that is the assistant tokens:
-  $$\mathcal{L}=-\frac{1}{|M|}\sum_{t\in M}\log p_\theta(x_t\mid x_{<t}),\quad M=\text{assistant positions}$$
+  $$
+  \mathcal{L}=-\frac{1}{|M|}\sum_{t\in M}\log p_\theta(x_t\mid x_{<t}),\quad M=\text{assistant positions}
+  $$
   TRL offers `completion_only_loss` (prompt-completion data) and `assistant_only_loss=True` (chat data; needs `{% generation %}` markers in the template, which TRL patches for some families). Without masking you spend capacity modelling the prompt and, worse, teach the model to imitate the user.
 * **Thinking models:** some templates add or strip reasoning blocks (`<think>...`). Verify how the template treats them in training vs inference.
 * Verify by decoding: take 5 training examples, print the token ids with the masked positions marked. Do this before every run.

@@ -14,12 +14,14 @@ Two caveats to keep in mind throughout:
 ## 8.2 Mathematical tools
 
 **pass@k.** With $n$ samples of which $c$ are correct, the unbiased estimator is
-$$\text{pass@}k=1-\binom{n-c}{k}\Big/\binom{n}{k}$$
-(Chen et al., 2021). If samples were independent with per-sample success $p$: pass@$k=1-(1-p)^k$. The gap between pass@1 and pass@$k$ is your **headroom** for rejection sampling and RL.
+$$
+\text{pass@}k=1-\binom{n-c}{k}\Big/\binom{n}{k}
+$$
+(Chen et al., 2021). If samples were independent with per-sample success $p$: $\text{pass@}k=1-(1-p)^k$. The gap between pass@1 and $\text{pass@}k$ is your **headroom** for rejection sampling and RL.
 
 **Majority vote (self-consistency)** (Wang et al. 2022): sample $N$ chains, take the most frequent final answer. If the correct answer has probability $p_c$ and each wrong answer less, majority voting accuracy $\to1$ as $N$ grows. Improves accuracy without training; costs $N\times$ inference.
 
-**Best-of-$N$ with a verifier/reward model:** expected best score grows roughly like $\sqrt{2\ln N}$ for Gaussian scores, i.e. slowly; with an *imperfect* proxy reward, the true reward can peak and then decline with $N$ (lab 11 section 2).
+**$\text{Best-of-}N$ with a verifier/reward model:** expected best score grows roughly like $\sqrt{2\ln N}$ for Gaussian scores, i.e. slowly; with an *imperfect* proxy reward, the true reward can peak and then decline with $N$ (lab 11 section 2).
 
 **Test-time compute scaling.** Snell et al. (2024) show that for many problems, spending inference compute (more samples, verifier-guided search) can be more efficient than scaling parameters - *if* the base model has a reasonable success rate on the problem. This is why small reasoning models can rival larger non-reasoning ones on some benchmarks, at the cost of many more generated tokens.
 
@@ -45,7 +47,7 @@ flowchart TB
 * **Distilled small models:** SFT of small dense models on R1-generated traces, which the report found better than RL directly on those small models.
 Open reproductions exist (Hugging Face *Open-R1*). The lesson for you: **cold-start SFT then RL**, not RL alone, is the safer path on small models.
 
-**5. Test-time compute.** Majority vote, verifier-ranked best-of-$N$, limited thinking budgets; hybrid models that can switch thinking on/off. Always report tokens per answer alongside accuracy.
+**5. Test-time compute.** Majority vote, verifier-ranked $\text{best-of-}N$, limited thinking budgets; hybrid models that can switch thinking on/off. Always report tokens per answer alongside accuracy.
 
 ## 8.4 A concrete small-model recipe (12 GB)
 
@@ -83,7 +85,7 @@ Open reproductions exist (Hugging Face *Open-R1*). The lesson for you: **cold-st
 | Approach | Pros | Cons |
 | --- | --- | --- |
 | Prompting + majority vote | no training | costly inference; limited by base ability |
-| Verifier-filtered SFT | stable, cheap, easy | saturates at base pass@$k$; imitation only |
+| Verifier-filtered SFT | stable, cheap, easy | saturates at base $\text{pass@}k$; imitation only |
 | Teacher distillation | strongest early gains | license/contamination; style and length transfer; needs teacher |
 | RLVR (GRPO) | optimises the real goal; robust behaviours | needs verifier and non-zero pass rate; sampling cost; hacking |
 | Process supervision | dense credit assignment | labels are expensive; gameable |

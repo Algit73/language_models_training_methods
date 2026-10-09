@@ -62,7 +62,9 @@ A stronger model scores or ranks drafts against a rubric. Known biases: **positi
 * Pairwise comparisons with **both orders** and require consistency; break ties as "tie".
 * Rubric with explicit criteria and scale anchors; ask for evidence quotes before the score.
 * **Calibrate against humans:** collect 100-200 human labels and compute agreement. Cohen's kappa
-  $$\kappa=\frac{p_o-p_e}{1-p_e}$$
+  $$
+  \kappa=\frac{p_o-p_e}{1-p_e}
+  $$
   ($p_o$ observed agreement, $p_e$ chance agreement from marginals). $\kappa<0.4$ means the judge is not trustworthy for that criterion.
 * Keep the judge **different from the model being trained** (no self-grading in reward loops) and do not let the training pipeline see the judge's prompt.
 * Report judge model + version + prompt hash.

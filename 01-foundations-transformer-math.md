@@ -91,11 +91,15 @@ Given the text so far, predict the next token; learn by being penalised when the
 
 The chain rule factorises the probability of a whole sequence into these steps:
 
-$$p_\theta(x_{1:T})=\prod_{t=1}^{T}p_\theta(x_t\mid x_{<t})$$
+$$
+p_\theta(x_{1:T})=\prod_{t=1}^{T}p_\theta(x_t\mid x_{<t})
+$$
 
 and training minimises the average **negative log-likelihood** (cross-entropy):
 
-$$\mathcal{L}(\theta)=-\frac{1}{T}\sum_{t=1}^{T}\log p_\theta(x_t\mid x_{<t})$$
+$$
+\mathcal{L}(\theta)=-\frac{1}{T}\sum_{t=1}^{T}\log p_\theta(x_t\mid x_{<t})
+$$
 
 **In words:** the loss is the average "surprise" of the model at the true next tokens. Lower is better.
 
@@ -128,7 +132,9 @@ A decoder-only model is: embeddings $\to$ $L$ identical blocks $\to$ final norm 
 
 For each token we compute three vectors from its hidden state $x$: a **query** ($q$: "what am I looking for?"), a **key** ($k$: "what do I contain?") and a **value** ($v$: "what do I contribute if selected?"). With $Q=XW_Q,\ K=XW_K,\ V=XW_V$:
 
-$$\mathrm{Attn}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_h}}+M\right)V$$
+$$
+\mathrm{Attn}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_h}}+M\right)V
+$$
 
 **In words:** each token scores every earlier token by the dot product of its query with their keys, turns the scores into weights that sum to 1 (softmax), and takes the weighted average of their values.
 
@@ -151,7 +157,9 @@ $$\mathrm{Attn}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_h}}+M\righ
 
 Attention by itself ignores order (it is a weighted average of a set). **Rotary position embedding (RoPE)** injects position by rotating each pair of channels $(q_{2i},q_{2i+1})$ and $(k_{2i},k_{2i+1})$ by an angle that depends on the token position $m$:
 
-$$\text{angle}_i(m)=m\,\theta_i,\qquad \theta_i=B^{-2i/d_h}$$
+$$
+\text{angle}_i(m)=m\,\theta_i,\qquad \theta_i=B^{-2i/d_h}
+$$
 
 with base $B$ (commonly 10,000; larger for long context).
 
@@ -165,7 +173,9 @@ with base $B$ (commonly 10,000; larger for long context).
 
 During generation the model reuses the keys and values of all previous tokens; storing them is the **KV cache**:
 
-$$\text{KV bytes}=2\cdot L\cdot g\cdot d_h\cdot s\cdot b\cdot \text{bytes per element}$$
+$$
+\text{KV bytes}=2\cdot L\cdot g\cdot d_h\cdot s\cdot b\cdot \text{bytes per element}
+$$
 
 ($2$ for keys and values, $b$ = number of concurrent sequences).
 
@@ -182,27 +192,31 @@ GQA shares each K/V head among $h/g$ query heads, cutting the cache (and the K/V
 * **SwiGLU MLP:** $y=W_d\big(\mathrm{SiLU}(W_gx)\odot W_ux\big)$. *In words:* two parallel projections to a wider space; one acts as a smooth gate on the other; then project back down. Because it uses three matrices, the hidden width is $d_{ff}\approx\tfrac83d$ so the parameter count matches a classic 4x two-matrix MLP.
 * **Pre-norm residual stream:**
 
-$$x\leftarrow x+\mathrm{Attn}(\mathrm{Norm}(x)),\qquad x\leftarrow x+\mathrm{MLP}(\mathrm{Norm}(x))$$
+$$
+x\leftarrow x+\mathrm{Attn}(\mathrm{Norm}(x)),\qquad x\leftarrow x+\mathrm{MLP}(\mathrm{Norm}(x))
+$$
 
 *In words:* each sublayer adds a correction to a running "residual stream"; the identity path keeps gradients flowing through dozens of layers.
 
 ### 1.4.5 Mixture of experts (MoE)
 
-Replace the single MLP by $E$ expert MLPs and a small **router** that sends each token to its top-$k$ experts. **Total** parameters grow about $E$-fold while **active** parameters per token grow only $k$-fold. Memory must hold *all* experts, so MoE models are usually a poor fit for 12 GB unless heavily quantised, and applying LoRA to experts is more involved.
+Replace the single MLP by $E$ expert MLPs and a small **router** that sends each token to its $\text{top-}k$ experts. **Total** parameters grow about $E$-fold while **active** parameters per token grow only $k$-fold. Memory must hold *all* experts, so MoE models are usually a poor fit for 12 GB unless heavily quantised, and applying LoRA to experts is more involved.
 
 ### 1.4.6 Counting parameters and compute
 
 For a dense model with GQA, SwiGLU and tied embeddings:
 
-$$N\approx Vd+L\Big[\underbrace{d(hd_h)+2d(gd_h)+(hd_h)d}_{\text{attention: }W_Q,\,W_K,W_V,\,W_O}+\underbrace{3\,d\,d_{ff}}_{\text{MLP}}\Big]$$
+$$
+N\approx Vd+L\Big[\underbrace{d(hd_h)+2d(gd_h)+(hd_h)d}_{\text{attention: }W_Q,\,W_K,W_V,\,W_O}+\underbrace{3\,d\,d_{ff}}_{\text{MLP}}\Big]
+$$
 
 **Worked example** (a ~1.7B-class config): $V=151{,}936,\ d=2048,\ L=28,\ h=16,\ g=8,\ d_h=128,\ d_{ff}=6144$.
 
-* Embeddings: $151{,}936\cdot2048\approx311$M.
-* Attention per layer: $2048\cdot2048+2\cdot2048\cdot1024+2048\cdot2048\approx12.6$M.
-* MLP per layer: $3\cdot2048\cdot6144\approx37.7$M.
-* Per layer $\approx50.3$M; $\times28=1.41$B.
-* Total $\approx1.72$B. Lab 01 computes this for any config.
+* Embeddings: $151{,}936\cdot2048\approx311\text{M}$.
+* Attention per layer: $2048\cdot2048+2\cdot2048\cdot1024+2048\cdot2048\approx12.6\text{M}$.
+* MLP per layer: $3\cdot2048\cdot6144\approx37.7\text{M}$.
+* Per layer $\approx50.3\text{M}$; $\times28=1.41\text{B}$.
+* Total $\approx1.72\text{B}$. Lab 01 computes this for any config.
 
 **Compute.** Forward pass $\approx2N$ FLOPs per token (each parameter does one multiply and one add), plus an attention term that grows with $s$. Backward is about twice the forward, so **training $\approx6N$ FLOPs per token** and total training compute $\approx6ND$ for $D$ tokens. Example: full training of a 1.7B model on 10M tokens is $6\cdot1.7\text{e}9\cdot10^7\approx10^{17}$ FLOPs: about 11 hours at a sustained 2.5 TFLOPS, or about an hour at a sustained 30 TFLOPS. This is why hardware throughput and utilisation (MFU) matter (chapter 2).
 
@@ -214,9 +228,13 @@ $$N\approx Vd+L\Big[\underbrace{d(hd_h)+2d(gd_h)+(hd_h)d}_{\text{attention: }W_Q
 
 Plain gradient descent moves each weight against its gradient: $\theta\leftarrow\theta-\eta g$. Deep nets train poorly with one global step size because different weights have very different gradient scales. **Adam** tracks, for each weight, a running average of the gradient ($m$, the direction) and of its square ($v$, the scale), and divides one by the other:
 
-$$m_t=\beta_1m_{t-1}+(1-\beta_1)g_t,\qquad v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2$$
+$$
+m_t=\beta_1m_{t-1}+(1-\beta_1)g_t,\qquad v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2
+$$
 
-$$\theta_t=\theta_{t-1}-\eta\Big(\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}+\lambda\,\theta_{t-1}\Big)$$
+$$
+\theta_t=\theta_{t-1}-\eta\Big(\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}+\lambda\,\theta_{t-1}\Big)
+$$
 
 where $\hat m,\hat v$ are bias-corrected ($m/(1-\beta_1^t)$, $v/(1-\beta_2^t)$) and $\lambda$ is **decoupled weight decay** (AdamW; Loshchilov & Hutter, 2019).
 
@@ -260,7 +278,9 @@ So a 1.7B model needs about $1.7\text{e}9\times16\approx27$ GB **before activati
 
 Across many experiments the loss follows a power law in parameters $N$ and training tokens $D$ (Kaplan et al., 2020; Hoffmann et al., 2022 "Chinchilla"):
 
-$$L(N,D)\approx E+\frac{A}{N^{\alpha}}+\frac{B}{D^{\beta}}$$
+$$
+L(N,D)\approx E+\frac{A}{N^{\alpha}}+\frac{B}{D^{\beta}}
+$$
 
 **In words:** there is an irreducible loss $E$; adding parameters helps with diminishing returns; adding data helps with diminishing returns; you need both.
 
@@ -280,7 +300,9 @@ For a fixed training compute $C\approx6ND$, Chinchilla found the best split is r
 
 The model outputs logits $z$ (one score per vocabulary entry). Sampling uses
 
-$$p_i=\mathrm{softmax}(z_i/T)=\frac{e^{z_i/T}}{\sum_j e^{z_j/T}}$$
+$$
+p_i=\mathrm{softmax}(z_i/T)=\frac{e^{z_i/T}}{\sum_j e^{z_j/T}}
+$$
 
 **In words:** temperature $T<1$ sharpens the distribution (more deterministic), $T>1$ flattens it (more random), $T\to0$ is greedy argmax.
 
@@ -296,8 +318,8 @@ $$p_i=\mathrm{softmax}(z_i/T)=\frac{e^{z_i/T}}{\sum_j e^{z_j/T}}$$
 | --- | --- | --- |
 | Greedy | always pick the argmax | deterministic evaluation of format/extraction |
 | Temperature | rescale logits | trade diversity vs reliability |
-| Top-$k$ / top-$p$ (nucleus) | sample only from the $k$ most likely / smallest set with total probability $p$ | avoid improbable tokens |
-| min-$p$ | keep tokens with $p_i\ge p_{\min}\cdot p_{\max}$ | adaptive truncation |
+| $\text{Top-}k$ / $\text{top-}p$ (nucleus) | sample only from the $k$ most likely / smallest set with total probability $p$ | avoid improbable tokens |
+| $\text{min-}p$ | keep tokens with $p_i\ge p_{\min}\cdot p_{\max}$ | adaptive truncation |
 | Beam search | keep the best $b$ prefixes | translation; rarely for chat |
 
 Rules: always **fix and report** decoding settings with any result; evaluate extraction/code with greedy or low temperature; **RL needs $T\approx1$** because it learns from the diversity of the model's own samples (chapter 7).

@@ -18,8 +18,8 @@
 | Output type | Primary metric | Also |
 | --- | --- | --- |
 | Exact/structured | exact match, field F1, schema validity | error taxonomy |
-| Numeric/reasoning | accuracy, pass@1 over $n$ samples | pass@$k$, mean tokens, truncation rate |
-| Code | unit-test pass@$k$ | apply rate, security lint, hidden tests |
+| Numeric/reasoning | accuracy, pass@1 over $n$ samples | $\text{pass@}k$, mean tokens, truncation rate |
+| Code | unit-test $\text{pass@}k$ | apply rate, security lint, hidden tests |
 | Retrieval | Recall@k, MRR, nDCG | latency |
 | Classification | macro-F1, per-class recall | calibration (ECE), confusion matrix |
 | Free text | rubric score, pairwise win-rate, faithfulness | length, toxicity, PII leaks |

@@ -33,7 +33,9 @@ Always build the **simplest baseline** (rules, keyword search, logistic regressi
 
 **Metrics (evaluate retrieval separately from generation)**
 
-$$\text{Recall@}k=\tfrac1N\sum_i\mathbb{1}[\text{gold}_i\in\text{top-}k],\quad \text{MRR}=\tfrac1N\sum_i\tfrac{1}{\text{rank}_i},\quad \text{nDCG@}k=\frac{\mathrm{DCG@}k}{\mathrm{IDCG@}k},\ \mathrm{DCG@}k=\sum_{j=1}^{k}\frac{\text{rel}_j}{\log_2(j+1)}$$
+$$
+\text{Recall@}k=\tfrac1N\sum_i\mathbb{1}[\text{gold}_i\in\text{top-}k],\quad \text{MRR}=\tfrac1N\sum_i\tfrac{1}{\text{rank}_i},\quad \text{nDCG@}k=\frac{\mathrm{DCG@}k}{\mathrm{IDCG@}k},\ \mathrm{DCG@}k=\sum_{j=1}^{k}\frac{\text{rel}_j}{\log_2(j+1)}
+$$
 
 If Recall@k is low, no generator can fix it. Then measure answer correctness, **faithfulness** and citation accuracy.
 
@@ -48,7 +50,9 @@ If Recall@k is low, no generator can fix it. Then measure answer correctness, **
 ## 13.3 Embedding models and the contrastive loss
 
 Learn an encoder $f$ so related texts are close. With a batch of (query $q_i$, positive $d_i^+$) and in-batch negatives, **InfoNCE**:
-$$\mathcal{L}=-\frac{1}{B}\sum_{i}\log\frac{\exp(s(q_i,d_i^+)/\tau)}{\sum_{j}\exp(s(q_i,d_j)/\tau)},\quad s=\cos(f(q),f(d))$$
+$$
+\mathcal{L}=-\frac{1}{B}\sum_{i}\log\frac{\exp(s(q_i,d_i^+)/\tau)}{\sum_{j}\exp(s(q_i,d_j)/\tau)},\quad s=\cos(f(q),f(d))
+$$
 Temperature $\tau$ (often 0.02-0.1) controls how sharply hard negatives are emphasised. **Hard negatives** (similar but wrong passages) matter most. Lab 11 trains a tiny retriever and shows Recall@k rising. Larger batches give more negatives; with 12 GB use gradient caching or smaller encoders (100M-600M params).
 
 ## 13.4 Classification and routing
@@ -76,7 +80,9 @@ SFT with LoRA on domain parallel data. Metrics: chrF/BLEU (surface), **COMET-sty
 ## 13.7 Speech
 
 **ASR** is typically a dedicated encoder-decoder model (Whisper-class); fine-tuning with LoRA on domain audio helps accents/jargon. Metric: word error rate
-$$\mathrm{WER}=\frac{S+D+I}{N}$$
+$$
+\mathrm{WER}=\frac{S+D+I}{N}
+$$
 (substitutions, deletions, insertions over reference words). Pipeline: ASR -> segmentation/diarization -> summarise/extract; evaluate each stage and propagate confidence (low-confidence words should not become confident facts in a summary).
 
 ## 13.8 Documents and multimodal understanding

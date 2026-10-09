@@ -12,9 +12,13 @@
 ## 7.2 Policy gradient derivation
 
 Using $\nabla\pi=\pi\nabla\log\pi$ (the *log-derivative trick*):
-$$\nabla_\theta J=\mathbb{E}_{y\sim\pi_\theta}\big[R(x,y)\,\nabla_\theta\log\pi_\theta(y|x)\big],\qquad \log\pi_\theta(y|x)=\sum_t\log\pi_\theta(y_t|s_t)$$
+$$
+\nabla_\theta J=\mathbb{E}_{y\sim\pi_\theta}\big[R(x,y)\,\nabla_\theta\log\pi_\theta(y|x)\big],\qquad \log\pi_\theta(y|x)=\sum_t\log\pi_\theta(y_t|s_t)
+$$
 **REINFORCE** estimates this with samples. The variance is huge, so subtract a **baseline** $b(x)$ that does not depend on the sampled $y$:
-$$\nabla_\theta J=\mathbb{E}\big[(R-b(x))\,\nabla_\theta\log\pi_\theta(y|x)\big]$$
+$$
+\nabla_\theta J=\mathbb{E}\big[(R-b(x))\,\nabla_\theta\log\pi_\theta(y|x)\big]
+$$
 Unbiased because $\mathbb{E}[b\nabla\log\pi]=b\nabla\sum_y\pi=b\nabla1=0$. The term $A=R-b$ is the **advantage**: positive means "better than usual", raise its probability; negative lowers it.
 
 **Intuition:** RL on outcome rewards increases the probability of whole sampled sequences that scored above the baseline and decreases the others. It only *re-weights what the model can already sample* (chapter 8 discusses what that implies).
@@ -23,19 +27,27 @@ Unbiased because $\mathbb{E}[b\nabla\log\pi]=b\nabla\sum_y\pi=b\nabla1=0$. The t
 
 ### PPO (clipped surrogate)
 For token $t$: ratio $\rho_t=\pi_\theta(a_t|s_t)/\pi_{old}(a_t|s_t)$;
-$$\mathcal{L}_{PPO}=-\mathbb{E}_t\big[\min(\rho_tA_t,\ \mathrm{clip}(\rho_t,1-\epsilon,1+\epsilon)A_t)\big]$$
+$$
+\mathcal{L}_{PPO}=-\mathbb{E}_t\big[\min(\rho_tA_t,\ \mathrm{clip}(\rho_t,1-\epsilon,1+\epsilon)A_t)\big]
+$$
 The clip stops one batch from moving the policy too far (you can take several optimiser steps on the same samples). Advantages $A_t$ come from **GAE**: $\delta_t=r_t+\gamma V(s_{t+1})-V(s_t)$, $A_t=\sum_l(\gamma\lambda)^l\delta_{t+l}$, which needs a **value network** $V$ of roughly the policy's size, trained alongside. Plus a reward model and a reference model: four large networks (policy, value, reward, reference). **Too heavy for 12 GB** beyond tiny models.
 
 ### RLOO (REINFORCE leave-one-out)
 Sample $G$ completions; baseline for sample $i$ is the mean of the *other* $G-1$ rewards:
-$$A_i=r_i-\frac{1}{G-1}\sum_{j\ne i}r_j$$
+$$
+A_i=r_i-\frac{1}{G-1}\sum_{j\ne i}r_j
+$$
 No critic. Unbiased. (Ahmadian et al. 2024, "Back to Basics: Revisiting REINFORCE-Style Optimization for Learning from Human Feedback in LLMs"; TRL: `RLOOTrainer`.)
 
 ### GRPO (Group Relative Policy Optimization)
 Introduced in DeepSeekMath (arXiv 2402.03300) and popularised by DeepSeek-R1 (arXiv 2501.12948). For each prompt sample a group $\{o_i\}_{i=1}^G$; compute rewards $r_i$ and
-$$\hat A_i=\frac{r_i-\mathrm{mean}(r)}{\mathrm{std}(r)}$$
+$$
+\hat A_i=\frac{r_i-\mathrm{mean}(r)}{\mathrm{std}(r)}
+$$
 The same advantage is applied to every token of completion $i$. Loss:
-$$\mathcal{L}_{GRPO}=-\frac{1}{\sum_i|o_i|}\sum_{i=1}^{G}\sum_{t=1}^{|o_i|}\Big[\min\big(\rho_{i,t}\hat A_i,\ \mathrm{clip}(\rho_{i,t},1-\epsilon,1+\epsilon)\hat A_i\big)-\beta\,D_{KL}\big[\pi_\theta\Vert\pi_{ref}\big]_{i,t}\Big]$$
+$$
+\mathcal{L}_{GRPO}=-\frac{1}{\sum_i|o_i|}\sum_{i=1}^{G}\sum_{t=1}^{|o_i|}\Big[\min\big(\rho_{i,t}\hat A_i,\ \mathrm{clip}(\rho_{i,t},1-\epsilon,1+\epsilon)\hat A_i\big)-\beta\,D_{KL}\big[\pi_\theta\Vert\pi_{ref}\big]_{i,t}\Big]
+$$
 with the k3 KL estimator $D_{KL}=\frac{\pi_{ref}}{\pi_\theta}-\log\frac{\pi_{ref}}{\pi_\theta}-1$ (Schulman 2020). With one update per batch, $\rho=1$ in value and only its gradient $\nabla\log\pi_\theta$ matters (lab 06).
 
 **Why it suits one GPU:** no value network; $\beta=0$ removes the reference model too (TRL default now), so memory is policy + optimizer (LoRA) + generation cache.
@@ -78,7 +90,7 @@ Treat these as **ablations, not a menu to enable all at once**. Start with TRL d
 1. **Start from SFT.** RL needs a non-zero success rate. Check `pass@k` (lab 05): if pass@8 is ~0, do SFT/distillation first. If pass@1 is already ~90%, RL has little to gain.
 2. **Model:** 0.5-1.7B first. Use LoRA (r 8-32): Thinking Machines found rank-1 LoRA matches full fine-tuning for policy-gradient RL, because each episode contributes only $O(1)$ bits of information (contrast ~1 bit **per token** in SFT).
 3. **Completion length:** 128-512 tokens. Longest sequences cost most (KV cache, quadratic attention). Raise only when needed.
-4. **Group size:** $G=4$-$8$; larger gives a better baseline and more non-zero-variance groups but costs proportionally more generation.
+4. **Group size:** $G=4\text{-}8$; larger gives a better baseline and more non-zero-variance groups but costs proportionally more generation.
 5. **Batch:** `per_device_batch x grad_accum` must be divisible by `num_generations`.
 6. **Learning rate:** LoRA ~1e-5 (full FT default in TRL is 1e-6; LoRA ~10x). Too high -> collapse.
 7. **`beta=0`** (no reference model) first; add KL (e.g. 0.001-0.04) only if drift appears.
@@ -103,7 +115,7 @@ Treat these as **ablations, not a menu to enable all at once**. Start with TRL d
 
 ## 7.7 Does RL add new abilities or sharpen existing ones?
 
-Evidence is mixed and evolving. Several studies report that RLVR mainly **increases pass@1 by concentrating probability on solutions the base model could already sample** (pass@$k$ at large $k$ may not improve, or may even fall), while longer-horizon recipes and curricula can add skills. For your purposes: measure both pass@1 and pass@$k$ before and after (lab 05), and expect the largest RL gain when pass@$k\gg$ pass@1.
+Evidence is mixed and evolving. Several studies report that RLVR mainly **increases pass@1 by concentrating probability on solutions the base model could already sample** ($\text{pass@}k$ at large $k$ may not improve, or may even fall), while longer-horizon recipes and curricula can add skills. For your purposes: measure both pass@1 and $\text{pass@}k$ before and after (lab 05), and expect the largest RL gain when $\text{pass@}k\gg$ pass@1.
 
 ## 7.8 Pros and cons of the choices
 

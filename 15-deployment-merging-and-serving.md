@@ -20,7 +20,9 @@
 ## 15.2 Quantisation fundamentals
 
 Uniform quantisation maps a float $w$ to an integer $q$ with scale $s$ and zero-point $z$:
-$$q=\mathrm{clip}\big(\mathrm{round}(w/s)+z,\ q_{min},q_{max}\big),\qquad \hat w=s\,(q-z)$$
+$$
+q=\mathrm{clip}\big(\mathrm{round}(w/s)+z,\ q_{min},q_{max}\big),\qquad \hat w=s\,(q-z)
+$$
 Error per weight is at most $s/2$; with $b$ bits and range $R$, $s=R/(2^b-1)$, so each removed bit **doubles** the error. **Block-wise scales** (per 32-128 weights) and outlier handling keep accuracy.
 
 | Method | Idea | Notes |
@@ -43,7 +45,9 @@ Error per weight is at most $s/2$; with $b$ bits and range $R$, $s=R/(2^b-1)$, s
 * **Latency targets:** time-to-first-token (prefill), inter-token latency (decode), total = TTFT + tokens x ITL.
 * **Batching** raises throughput (weights reused) at the cost of per-request latency; **continuous batching** keeps the GPU busy as requests finish.
 * **Speculative decoding** (Leviathan et al. 2022; Chen et al. 2023): a small *draft* model proposes $\gamma$ tokens; the target verifies them in one pass. With per-token acceptance probability $\alpha$ the expected tokens per target pass is
-$$\mathbb{E}[\text{tokens}]=\frac{1-\alpha^{\gamma+1}}{1-\alpha}$$
+$$
+\mathbb{E}[\text{tokens}]=\frac{1-\alpha^{\gamma+1}}{1-\alpha}
+$$
 (e.g. $\alpha=0.8,\gamma=4\Rightarrow\approx3.4$). The output distribution is *exactly* the target's. Gains depend on draft-target agreement: a distilled small draft of the same family works best.
 * **Prompt/prefix caching** saves prefill for shared system prompts (agents).
 

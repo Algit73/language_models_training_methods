@@ -6,7 +6,9 @@
 ## 4.1 SFT in one equation
 
 Given pairs $(x,y)$ and the concatenated token sequence $s=[x;y]$:
-$$\mathcal{L}_{SFT}(\theta)=-\frac{1}{|M|}\sum_{t\in M}\log p_\theta(s_t\mid s_{<t})$$
+$$
+\mathcal{L}_{SFT}(\theta)=-\frac{1}{|M|}\sum_{t\in M}\log p_\theta(s_t\mid s_{<t})
+$$
 $M$ = positions of the response (plus EOS). It is ordinary cross-entropy - *behaviour cloning*: it raises the probability of the demonstrated tokens and nothing else.
 
 **Detail that changes results:** how the mean is taken. *Token-mean over the batch* weights long answers more; *per-sequence mean* weights every example equally. Frameworks differ (gradient accumulation with padded batches can also change the effective weighting unless the normaliser is the total token count). Recent TRL versions use the total non-masked tokens and compute the loss in chunks so the full vocab $\times$ length logits tensor is not materialised (`loss_type="chunked_nll"`, default). TRL also exposes a "Dynamic Fine-Tuning" (`dft`) loss that reweights tokens by their probability, motivated by the view of SFT as a poorly-shaped policy gradient - experimental territory, try it only as an ablation.
@@ -33,13 +35,17 @@ $M$ = positions of the response (plus EOS). It is ordinary cross-entropy - *beha
 ## 4.3 LoRA mathematics
 
 For a frozen weight $W_0\in\mathbb{R}^{d_{out}\times d_{in}}$, learn a low-rank update:
-$$W=W_0+\frac{\alpha}{r}BA,\qquad A\in\mathbb{R}^{r\times d_{in}},\ B\in\mathbb{R}^{d_{out}\times r},\ r\ll\min(d_{in},d_{out})$$
+$$
+W=W_0+\frac{\alpha}{r}BA,\qquad A\in\mathbb{R}^{r\times d_{in}},\ B\in\mathbb{R}^{d_{out}\times r},\ r\ll\min(d_{in},d_{out})
+$$
 Forward: $y=W_0x+\frac{\alpha}{r}B(Ax)$ - never form $BA$ during training.
 
 * **Initialisation:** $A$ random (Kaiming-uniform), $B=0$, so the adapted model *equals* the base at step 0.
 * **Parameters:** $r(d_{in}+d_{out})$ per matrix instead of $d_{in}d_{out}$. For a $2048\times6144$ MLP matrix and $r=16$: 131k vs 12.6M (1%).
 * **Gradients.** Let $g=\partial\mathcal{L}/\partial y$ and $h=Ax$, $s=\alpha/r$:
-  $$\frac{\partial\mathcal{L}}{\partial B}=s\,g\,h^\top,\qquad \frac{\partial\mathcal{L}}{\partial A}=s\,B^\top g\,x^\top$$
+  $$
+  \frac{\partial\mathcal{L}}{\partial B}=s\,g\,h^\top,\qquad \frac{\partial\mathcal{L}}{\partial A}=s\,B^\top g\,x^\top
+  $$
   At init $B=0\Rightarrow\partial\mathcal{L}/\partial A=0$: first only $B$ moves, then $A$ starts to matter as $B$ grows. This built-in warmup is why the best learning rate depends on run length.
 * **Scaling $\alpha/r$:** keeps the update magnitude roughly rank-independent, so the same learning rate works across ranks (Thinking Machines, *LoRA Without Regret*, 2025). **rsLoRA** argues for $\alpha/\sqrt r$ to stabilise high ranks (`use_rslora=True` in PEFT).
 * **Merging:** $W_{merged}=W_0+sBA$ - identical function, no inference overhead (lab 03 verifies numerically).

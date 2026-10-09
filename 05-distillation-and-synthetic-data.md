@@ -11,7 +11,9 @@ A small model cannot discover everything a large one knows, but it can *imitate*
 
 Teacher $p(y_t\mid y_{<t},x)$, student $q_\phi$. Per-token divergences:
 
-$$\text{Forward KL: }D_{KL}(p\Vert q)=\sum_y p(y)\log\frac{p(y)}{q(y)}\qquad \text{Reverse KL: }D_{KL}(q\Vert p)=\sum_y q(y)\log\frac{q(y)}{p(y)}$$
+$$
+\text{Forward KL: }D_{KL}(p\Vert q)=\sum_y p(y)\log\frac{p(y)}{q(y)}\qquad \text{Reverse KL: }D_{KL}(q\Vert p)=\sum_y q(y)\log\frac{q(y)}{p(y)}
+$$
 
 * **Forward KL (mass-covering).** $q$ must cover all modes of $p$. Minimising it on teacher *samples* is exactly maximum likelihood = cross-entropy training. A too-small student spreads mass between modes (lab 07 shows mass in the valley) - at generation time it blends styles.
 * **Reverse KL (mode-seeking).** $q$ is penalised for mass where $p$ has none, so it commits to high-probability modes: sharper samples, less diversity. It requires samples *from the student*, evaluated by the teacher - hence **on-policy**.

@@ -47,7 +47,7 @@ Measure **patch apply rate** separately from **test pass rate**; fix the first b
 
 ## 11.5 Metrics
 
-* **pass@$k$** with the unbiased estimator (lab 05/10): functional correctness.
+* **$\text{pass@}k$** with the unbiased estimator (lab 05/10): functional correctness.
 * Patch apply rate, tests pass, regression tests still pass, changed-lines/files, time and tokens per success.
 * Benchmarks: HumanEval (Chen et al. 2021) and MBPP (function level; saturated and contaminated for many models), **LiveCodeBench** (contamination-aware, time-stamped problems), **BigCodeBench**, **SWE-bench** / Verified (Jimenez et al. 2023) for issue resolution, and SWE-agent (Yang et al. 2024) for the agent-computer interface idea. Always add a **private** benchmark built from your own code.
 * Non-functional checks: static analysis/lint, type checks, security scan, license scan, maintainability review.

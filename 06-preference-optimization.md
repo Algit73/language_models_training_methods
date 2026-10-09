@@ -14,26 +14,36 @@ Demonstrations (SFT) tell the model *what to say*. Many qualities - helpfulness,
 3. **RL** (PPO) maximising the reward with a KL leash to $\pi_{ref}$.
 
 **Bradley-Terry reward model.** Assume $P(y_w\succ y_l\mid x)=\sigma\big(r(x,y_w)-r(x,y_l)\big)$. Fit by maximum likelihood:
-$$\mathcal{L}_{RM}(\phi)=-\mathbb{E}\log\sigma\big(r_\phi(x,y_w)-r_\phi(x,y_l)\big)$$
+$$
+\mathcal{L}_{RM}(\phi)=-\mathbb{E}\log\sigma\big(r_\phi(x,y_w)-r_\phi(x,y_l)\big)
+$$
 (Lab 11 recovers a hidden reward from noisy comparisons; real annotators agree only ~70-80% of the time, so the ceiling on accuracy is well below 100%.)
 
 **KL-regularised RL objective.**
-$$\max_{\pi}\ \mathbb{E}_{x,\,y\sim\pi}\big[r(x,y)\big]-\beta\,D_{KL}\big(\pi(\cdot|x)\,\Vert\,\pi_{ref}(\cdot|x)\big)$$
+$$
+\max_{\pi}\ \mathbb{E}_{x,\,y\sim\pi}\big[r(x,y)\big]-\beta\,D_{KL}\big(\pi(\cdot|x)\,\Vert\,\pi_{ref}(\cdot|x)\big)
+$$
 The KL term keeps the policy where the reward model is trustworthy; without it the policy finds exploits (over-optimisation, Goodhart - lab 11 section 2).
 
 ## 6.3 Deriving DPO
 
 1. The KL-regularised objective has the closed-form optimum
-$$\pi^*(y|x)=\frac{1}{Z(x)}\,\pi_{ref}(y|x)\,\exp\!\big(r(x,y)/\beta\big),\quad Z(x)=\sum_y\pi_{ref}(y|x)e^{r(x,y)/\beta}$$
+$$
+\pi^*(y|x)=\frac{1}{Z(x)}\,\pi_{ref}(y|x)\,\exp\!\big(r(x,y)/\beta\big),\quad Z(x)=\sum_y\pi_{ref}(y|x)e^{r(x,y)/\beta}
+$$
 2. Invert: $r(x,y)=\beta\log\dfrac{\pi^*(y|x)}{\pi_{ref}(y|x)}+\beta\log Z(x)$.
 3. Plug into Bradley-Terry. $Z(x)$ depends only on $x$, so it **cancels** in the difference $r(x,y_w)-r(x,y_l)$.
 4. Replace $\pi^*$ by the trainable policy $\pi_\theta$:
-$$\boxed{\mathcal{L}_{DPO}=-\mathbb{E}_{(x,y_w,y_l)}\log\sigma\!\Big(\beta\Big[\log\tfrac{\pi_\theta(y_w|x)}{\pi_{ref}(y_w|x)}-\log\tfrac{\pi_\theta(y_l|x)}{\pi_{ref}(y_l|x)}\Big]\Big)}$$
+$$
+\boxed{\mathcal{L}_{DPO}=-\mathbb{E}_{(x,y_w,y_l)}\log\sigma\!\Big(\beta\Big[\log\tfrac{\pi_\theta(y_w|x)}{\pi_{ref}(y_w|x)}-\log\tfrac{\pi_\theta(y_l|x)}{\pi_{ref}(y_l|x)}\Big]\Big)}
+$$
 
 The policy *is* the reward model: $\hat r_\theta=\beta\log(\pi_\theta/\pi_{ref})$ ("Your language model is secretly a reward model", Rafailov et al. 2023, arXiv 2305.18290).
 
 **Gradient** (why it behaves sensibly):
-$$\nabla_\theta\mathcal{L}=-\beta\,\mathbb{E}\Big[\underbrace{\sigma(\hat r_l-\hat r_w)}_{\text{weight: larger when the implicit ranking is wrong}}\big(\nabla\log\pi_\theta(y_w|x)-\nabla\log\pi_\theta(y_l|x)\big)\Big]$$
+$$
+\nabla_\theta\mathcal{L}=-\beta\,\mathbb{E}\Big[\underbrace{\sigma(\hat r_l-\hat r_w)}_{\text{weight: larger when the implicit ranking is wrong}}\big(\nabla\log\pi_\theta(y_w|x)-\nabla\log\pi_\theta(y_l|x)\big)\Big]
+$$
 Examples the model already ranks correctly contribute little; mis-ranked pairs dominate.
 
 **Sequence log-probabilities** are sums of token log-probs: $\log\pi(y|x)=\sum_t\log\pi(y_t|x,y_{<t})$. Hence **longer responses have larger magnitude log-ratios** - the source of DPO's length sensitivity.
@@ -65,7 +75,7 @@ TRL: stable `DPOTrainer` (with `loss_type` options such as `sigmoid`, `ipo`, `hi
 | **Verifier** | correct vs incorrect sample from the model | exact labels, on-policy | only for checkable tasks |
 | **Human edits** | edited = chosen, original = rejected | high quality signal of what to change | cost |
 | **Judge model** (RLAIF) | strong LLM ranks two answers with a rubric; **randomise order**, average both orders | scalable | judge biases (position, length, self-preference); needs calibration |
-| **Model variants** | best-of-$N$ vs worst-of-$N$ under a reward | cheap | depends on reward quality |
+| **Model variants** | $\text{best-of-}N$ vs $\text{worst-of-}N$ under a reward | cheap | depends on reward quality |
 | **Public datasets** | UltraFeedback etc. | ready | not your distribution; licenses |
 
 **Good pair design:** same prompt; both responses *plausible* (hard negatives); difference attributable to one property; balanced lengths (or control for it); diverse prompts; include your safety/format rules. Trivial negatives teach little (lab 04 exercise 3).
