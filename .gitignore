@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Training outputs and model weights (large; regenerate with the labs/scripts)
+labs/runs/
+runs/
+*.pt
+*.pth
+*.safetensors
+*.gguf
+*.bin
+
+# Secrets and local environment
+.env
+*.key
